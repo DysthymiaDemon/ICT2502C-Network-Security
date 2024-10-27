@@ -1,0 +1,83 @@
+!
+!
+!
+en
+Student@s1t
+!
+config t
+!
+hostname SW1
+!
+no ip domain lookup
+!
+!
+interface vlan 1
+ip addr 192.168.10.10 255.255.255.0
+no shut
+!
+interface GigabitEthernet1/0/1
+description "Link to R1"
+switchport mode access
+switchport access vlan 1
+no shut
+!
+interface GigabitEthernet1/0/2
+description "Link to PC1"
+switchport mode access
+switchport access vlan 1
+no shut
+!
+interface GigabitEthernet1/0/3
+description "Link to ATK"
+switchport mode access
+switchport access vlan 1
+no shut
+!
+end
+!
+copy runn start
+
+ping 192.168.10.99
+
+
+
+!
+!
+!
+en
+Student@s1t
+!
+config t
+!
+hostname SW1
+!
+no ip domain lookup
+!
+!
+interface vlan 1
+ip addr 192.168.10.10 255.255.255.0
+no shut
+!
+interface GigabitEthernet0/1
+description "Link to R1"
+switchport mode access
+switchport access vlan 1
+no shut
+!
+interface GigabitEthernet0/2
+description "Link to PC1"
+switchport mode access
+switchport access vlan 1
+no shut
+!
+interface GigabitEthernet0/3
+description "Link to ATK"
+switchport mode access
+switchport access vlan 1
+no shut
+!
+end
+!
+copy runn start
+
+ping 192.168.10.99

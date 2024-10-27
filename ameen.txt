@@ -1,0 +1,16 @@
+https://github.com/frostbits-security/MITM-cheatsheet?tab=readme-ov-file#ospf-routing-table-poisoning
+https://forums.kali.org/archived/showthread.php?20003-Installing-loki-on-kali-linux-32-bit
+https://gitlab.com/kalilinux/packages/above
+
+https://frrouting.org/
+https://hackmag.com/security/routing-nightmare/
+password fakecisco
+/snap/bin/frr.vtysh
+
+above
+routersploit
+t50
+https://itskillbuilding.com/networking/network/ospf/ospf-ttl-security-check/
+
+https://book.hacktricks.xyz/generic-methodologies-and-resources/pentesting-network
+https://www.kali.org/tools/cisco-torch/
