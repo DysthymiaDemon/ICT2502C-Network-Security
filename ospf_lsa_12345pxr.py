@@ -521,7 +521,7 @@ def send_poison_packet(received_packet):
         linklist=[
         OSPF_Link(type=2, id="10.0.0.0", data="255.255.255.0", metric=1),
         OSPF_Link(type=2, id="10.0.10.0", data="255.255.255.0", metric=1),
-        OSPF_Link(type=3, id="192.168.20.0", data="255.255.255.0", metric=1),
+        OSPF_Link(type=2, id="192.168.20.0", data="255.255.255.0", metric=1),
         OSPF_Link(type=3, id="3.3.3.3", data="255.255.255.255", metric=1)
         ])]
     )
