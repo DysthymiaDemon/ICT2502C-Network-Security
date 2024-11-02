@@ -104,7 +104,7 @@ def handle_packet(packet):
             # time.sleep(5)
             poison_time = 1
         
-        elif state == "FULL" or state == "POISON_PROP" and ospf_layer.type == 1:
+        # elif state == "FULL" or state == "POISON_PROP" and ospf_layer.type == 1:
             # send_hello_neighbor()
         
         elif state == "POISON_SENT" and ospf_layer.type == 4 or ospf_layer.type == 5 and poison_time == 1:
@@ -519,8 +519,8 @@ def send_poison_packet(received_packet):
         seq=0x80000099,
         options=0x22, # 0x22 is Demand Circuits, External Routing
         linklist=[
-        OSPF_Link(type=3, id="10.0.0.0", data="255.255.255.0", metric=1),
-        OSPF_Link(type=3, id="10.0.10.0", data="255.255.255.0", metric=1),
+        OSPF_Link(type=2, id="10.0.0.0", data="255.255.255.0", metric=1),
+        OSPF_Link(type=2, id="10.0.10.0", data="255.255.255.0", metric=1),
         OSPF_Link(type=3, id="192.168.20.0", data="255.255.255.0", metric=1),
         OSPF_Link(type=3, id="3.3.3.3", data="255.255.255.255", metric=1)
         ])]
