@@ -3,11 +3,56 @@ from scapy.contrib.ospf import *
 import time
 import struct
 import threading
+import os
 
 state = "INIT"
 poison_time = 0
 last_lsupd_time = 0
 lsa_seq_r = 0x80000001
+router_info_logged = False
+
+log_file_path = os.path.expanduser("~/Desktop/ospf_log.txt")
+
+def log_to_file(data):
+    with open(log_file_path, "a") as log_file:
+        log_file.write(data + "\n")
+
+def log_router_info(packet):
+    if packet.haslayer(OSPF_Hdr):
+        ospf_hdr = packet[OSPF_Hdr]
+        router_info = (
+            f"OSPF Packet from Router {ospf_hdr.src}:\n"
+            f"  Version: {ospf_hdr.version}\n"
+            f"  Area ID: {ospf_hdr.area}\n"
+            f"  Packet Type: {ospf_hdr.type}\n"
+        )
+        log_to_file(router_info)
+
+def log_dbd_flags(packet):
+    if packet.haslayer(OSPF_DBDesc):
+        dbd_layer = packet[OSPF_DBDesc]
+        dbd_flags_info = (
+            f"DBD Packet from Router {packet[IP].src}:\n"
+            f"  Flags: {hex(dbd_layer.dbdescr)}\n"
+            f"  Options: {hex(dbd_layer.options)}\n"
+            f"  DD Sequence: {dbd_layer.ddseq}\n"
+        )
+        log_to_file(dbd_flags_info)
+
+def log_lsa_details(packet):
+    if packet.haslayer(OSPF_LSUpd):
+        for lsa in packet[OSPF_LSUpd].lsalist:
+            if isinstance(lsa, OSPF_Router_LSA):
+                lsa_info = (
+                    f"Router LSA from {lsa.adrouter}:\n"
+                    f"  Sequence Number: {hex(lsa.seq)}\n"
+                    f"  Age: {lsa.age}\n"
+                    f"  Options: {hex(lsa.options)}\n"
+                    f"  Links:\n"
+                )
+                for link in lsa.linklist:
+                    lsa_info += f"    Type: {link.type}, ID: {link.id}, Metric: {link.metric}\n"
+                log_to_file(lsa_info)
 
 # Function to process received packets based on the ospf handshake state
 def handle_packet(packet):
@@ -16,9 +61,13 @@ def handle_packet(packet):
     global poison_time
     global last_lsupd_time
     global lsa_seq_r
+    global router_info_logged
     
     if packet.haslayer(OSPF_Hdr):
         ospf_layer = packet.getlayer(OSPF_Hdr)
+        if not router_info_logged:
+            log_router_info(packet)
+            router_info_logged = True
 
         # If in "INIT" state, send the hello packet
         if state == "INIT":
@@ -36,6 +85,7 @@ def handle_packet(packet):
         # If in "HELLO_RESPONDED" state, handle the DBD packet
         elif state == "HELLO_RESPONDED" and ospf_layer.type == 2:
             print("Received OSPF DBD packet")
+            log_dbd_flags(packet)
             send_dbd_response(packet)
             state = "DBD_SENT"
             print("DBD_SENT")
@@ -56,6 +106,7 @@ def handle_packet(packet):
         # If in "REQ_SENT" state and received the LS Update packet
         elif state == "REQ_SENT" and ospf_layer.type == 4:
             print("Received OSPF LS Update packet")
+            log_lsa_details(packet)
             send_ls_r_upd_update(packet)
             state = "UPDATE_SENT"
             print("UPDATE_SENT")
