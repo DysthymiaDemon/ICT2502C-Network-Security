@@ -85,7 +85,6 @@ def handle_packet(packet):
         # If in "HELLO_RESPONDED" state, handle the DBD packet
         elif state == "HELLO_RESPONDED" and ospf_layer.type == 2:
             print("Received OSPF DBD packet")
-            log_dbd_flags(packet)
             send_dbd_response(packet)
             state = "DBD_SENT"
             print("DBD_SENT")
@@ -93,6 +92,7 @@ def handle_packet(packet):
         # If in "DBD_SENT" state, handle the DBD packet
         elif state == "DBD_SENT" and ospf_layer.type == 2:
             print("Received 2nd OSPF DBD packet")
+            log_dbd_flags(packet)
             send_dbd_response_2(packet)
             state = "DBD_2_SENT"
             print("DBD_2_SENT")
@@ -226,12 +226,12 @@ def send_hello_neighbor():
     )
     
     # Manual LLS Data Block
-    # lls_data = struct.pack('!HHI', 1, 4, 0x00000001)  # TLV Type 1, Length 4, Option 0x00000001 (LSDB Resync)
+    # lls_data = struct.pack('!HHI', 1, 4, 0x00000001)  # TLV Type 1, Length 4, Option LSDB Resync
     # lls_checksum = checksum(lls_data)
     # lls_data_block = struct.pack('!HH', lls_checksum, len(lls_data) + 4) + lls_data
     
     lls_extended_opts = LLS_Extended_Options(
-        options=b'\x00\x00\x00\x01'  # Setting the LSDB Resynchronization flag
+        options=b'\x00\x00\x00\x01'  # The LSDB Resynchronization flag
     )
     
     ospf_lls = OSPF_LLS_Hdr(llstlv=[lls_extended_opts])
@@ -262,7 +262,7 @@ def send_dbd_response(received_packet):
     ospf_dbd = OSPF_DBDesc(
         mtu=1500,
         options=0x22,
-        ddseq=received_packet[OSPF_DBDesc].ddseq + 1,  #  sequence number
+        ddseq=received_packet[OSPF_DBDesc].ddseq + 1,  # sequence number
         dbdescr=0x07, # (I) Init, (M) More, (MS) Master
         lsaheaders=lsaheaders
     )
@@ -280,7 +280,7 @@ def send_dbd_response(received_packet):
 
 def send_dbd_response_2(received_packet):
     
-    ddseq = received_packet[OSPF_DBDesc].ddseq + 1 #  sequence number
+    ddseq = received_packet[OSPF_DBDesc].ddseq + 1 # sequence number
     
     lsaheaders = []
     for lsa in received_packet[OSPF_DBDesc].lsaheaders:
@@ -293,7 +293,7 @@ def send_dbd_response_2(received_packet):
         lsaheaders.append(lsa_header)
     
     # Manual LLS Data Block
-    # lls_data = struct.pack('!HHI', 1, 4, 0x00000001)  # TLV Type 1, Length 4, Option 0x00000001 (LSDB Resync)
+    # lls_data = struct.pack('!HHI', 1, 4, 0x00000001)  # TLV Type 1, Length 4, Option LSDB Resync
     # lls_checksum = checksum(lls_data)
     # lls_data_block = struct.pack('!HH', lls_checksum, len(lls_data) + 4) + lls_data
     

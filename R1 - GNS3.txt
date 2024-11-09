@@ -1,3 +1,4 @@
+!!! GNS3CONFIG !!!
 !
 !
 !
@@ -11,7 +12,7 @@ hostname R1
 no ip domain lookup
 !
 !
-interface gi0/0/0
+interface gi0/0
 ip address 10.0.0.1 255.255.255.0
 description "Link to R2"
 ip ospf cost 20
@@ -21,18 +22,16 @@ interface loopback 0
 ip addr 1.1.1.1 255.255.255.255
 no shut
 !
-interface gi0/0/1
+interface gi0/1
 ip address 192.168.10.1 255.255.255.0
-ip ospf cost 20
 description "Link to SW1"
 no shut
 !
-interface gi0/0/2
+interface gi0/2
 ip address 10.0.10.1 255.255.255.0
 description "Link to R3"
 ip ospf cost 20
 no shut
-!
 !
 router ospf 1
 network 10.0.0.0 0.255.255.255 area 0
@@ -50,3 +49,4 @@ debug ip ospf events
 debug ip ospf adj
 !
 copy runn start
+

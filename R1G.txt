@@ -60,6 +60,7 @@ debug ip ospf adj
 copy runn start
 
 
+!!! GNS3CONFIG !!!
 !
 !
 !
