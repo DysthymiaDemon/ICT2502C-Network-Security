@@ -1,0 +1,68 @@
+┌──(kali㉿kali)-[~]
+└─$ sudo python3 ~/Desktop/ospf_lsa_12345px.py
+Started sniffing packets...
+.
+Sent 1 packets.
+HELLO_ED
+Received OSPF Hello packet
+.
+Sent 1 packets.
+HELLO_RESPONDED
+Received OSPF DBD packet
+.
+Sent 1 packets.
+DBD_SENT
+Received 2nd OSPF DBD packet
+.
+Sent 1 packets.
+DBD_2_SENT
+.
+Sent 1 packets.
+REQ_SENT
+Received OSPF LS Update packet
+.
+Sent 1 packets.
+UPDATE_SENT
+Received OSPF LS Update packet
+.
+Sent 1 packets.
+UPDATE_2_SENT
+Received OSPF LS Update packet after Router Update sent
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+ACK_SENT
+Received OSPF LS Update packet after Router Update sent
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+ACK_SENT
+FULL
+Starting periodic Hello packets...
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+.
+Sent 1 packets.
+^C^CTraceback (most recent call last):
+  File "/home/kali/Desktop/ospf_lsa_12345px.py", line 471, in <module>
+    while True:
+KeyboardInterrupt
+^C

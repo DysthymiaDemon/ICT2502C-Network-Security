@@ -1,4 +1,4 @@
-!!! LABCONFIG !!!
+!!! GNS3CONFIG !!!
 !
 !
 !
@@ -12,31 +12,24 @@ hostname R2
 no ip domain lookup
 !
 !
-interface gi0/0/0
+interface gi0/0
 ip address 10.0.0.2 255.255.255.0
-ip ospf authentication message-digest
-ip ospf message-digest-key 1 md5 Cisco_Rockz_902!0
 description "Link to R1"
 ip ospf cost 20
 no shut
 !
 interface loopback 0
 ip addr 2.2.2.2 255.255.255.255
-ip ospf authentication message-digest
-ip ospf message-digest-key 1 md5 Cisco_Rockz_902!0
 no shut
 !
-interface gi0/0/1
+interface gi0/1
 ip address 192.168.20.1 255.255.255.0
-ip ospf authentication message-digest
-ip ospf message-digest-key 1 md5 Cisco_Rockz_902!0
 description "Link to SW2"
 ip ospf cost 20
 no shut
 !
 !
 router ospf 1
-passive-interface gi0/0/1
 network 10.0.0.0 0.255.255.255 area 0
 network 192.168.20.0 0.0.0.255 area 0
 network 2.2.2.2 0.0.0.0 area 0
