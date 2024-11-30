@@ -1,0 +1,43 @@
+!
+en
+!
+config t
+!
+hostname R1
+!
+interface Gi0/1
+ description Connection to SW2
+ ip address 192.168.30.81 255.255.255.248
+ no shutdown
+!
+interface Gi0/1.10
+ description Mgmt Vlan to SW2
+ encapsulation dot1Q 10
+ ip address 192.168.10.2 255.255.255.0
+ no shutdown
+!
+interface Gi0/1.20
+ description Mgmt Vlan to SW2
+ encapsulation dot1Q 20
+ ip address 192.168.20.2 255.255.255.0
+ no shutdown
+!
+ip dhcp excluded-address 192.168.10.1 192.168.10.10
+ip dhcp excluded-address 192.168.20.1 192.168.20.10
+!
+ip dhcp pool VLAN10
+ network 192.168.10.0 255.255.255.0
+ default-router 192.168.10.1
+ dns-server 8.8.8.8
+!
+ip dhcp pool VLAN20
+ network 192.168.20.0 255.255.255.0
+ default-router 192.168.20.1
+ dns-server 8.8.8.8
+!
+ip route 0.0.0.0 0.0.0.0 192.168.30.83
+!
+end
+copy running-config startup-config
+
+

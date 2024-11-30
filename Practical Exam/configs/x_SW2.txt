@@ -1,0 +1,38 @@
+!
+en
+!
+config t
+!
+hostname SW2
+!
+vlan 10
+ name VLAN10
+!
+vlan 20
+ name VLAN20
+!
+interface Gi0/1
+ description Connection to R1
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+!
+interface Gi3/0
+ description Trunk to DSW1
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+!
+interface Gi3/1
+ description Trunk to DSW2
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+!
+interface Vlan1
+ description SW2 Mgmt
+ ip address 192.168.30.83 255.255.255.248
+ no shutdown
+!
+ip default-gateway 192.168.30.81
+end
+copy running-config startup-config
+
+

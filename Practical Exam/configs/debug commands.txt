@@ -1,0 +1,18 @@
+
+
+en
+debug ip dhcp snooping event
+debug ip dhcp snooping packet
+debug spanning-tree events
+debug ip dhcp server events
+debug ip dhcp server packet
+
+
+
+show vlan brief
+show interfaces trunk
+show interfaces status
+show spanning-tree vlan 10
+show spanning-tree vlan 20
+
+

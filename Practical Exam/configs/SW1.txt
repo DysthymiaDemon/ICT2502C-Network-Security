@@ -1,0 +1,71 @@
+!
+en
+Student@s1t
+!
+config t
+!
+hostname SW1
+!
+vlan 10
+ name VLAN10
+!
+vlan 20
+ name VLAN20
+!
+interface range Gi1/0/2-11
+ description Access Ports for VLAN 10
+ switchport mode access
+ switchport access vlan 10
+!
+interface range Gi1/0/13-23
+ description Access Ports for VLAN 20
+ switchport mode access
+ switchport access vlan 20
+!
+interface Gi1/0/1
+ description Trunk to DSW1
+ switchport mode trunk
+ switchport trunk encapsulation dot1q
+!
+interface Gi1/0/24
+ description Trunk to DSW2
+ switchport mode trunk
+ switchport trunk encapsulation dot1q
+!
+interface Vlan1
+ description SW1 Mgmt
+ ip address 192.168.30.82 255.255.255.248
+ no shutdown
+!
+ip default-gateway 192.168.30.81
+!
+ip dhcp snooping
+ip dhcp snooping vlan 10
+ip dhcp snooping vlan 20
+ip arp inspection vlan 20
+!
+interface range Gi1/0/2-11
+ ip dhcp snooping limit rate 10
+!
+interface range Gi1/0/13-23
+ ip dhcp snooping limit rate 10
+!
+interface Gi1/0/1
+ ip dhcp snooping trust
+!
+interface Gi1/0/24
+ ip dhcp snooping trust
+!
+exit
+!
+no ip dhcp snooping information option
+!
+end
+copy running-config startup-config
+
+
+
+
+
+
+

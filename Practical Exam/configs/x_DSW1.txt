@@ -1,0 +1,56 @@
+!
+en
+!
+config t
+!
+hostname DSW1
+!
+ip routing
+!
+vlan 10
+ name VLAN10
+!
+vlan 20
+ name VLAN20
+!
+interface Vlan10
+ description VLAN 10 Gateway
+ ip address 192.168.10.2 255.255.255.0
+ standby 10 ip 192.168.10.1
+ standby 10 priority 110
+ standby 10 preempt
+ ip helper-address 192.168.30.81
+ no shut
+!
+interface Vlan20
+ description VLAN 20 Gateway
+ ip address 192.168.20.2 255.255.255.0
+ standby 20 ip 192.168.20.1
+ standby 20 priority 110
+ standby 20 preempt
+ ip helper-address 192.168.30.81
+ no shut
+!
+interface Vlan1
+ description DSW1 Mgmt
+ ip address 192.168.30.84 255.255.255.248
+ no shutdown
+!
+interface Gi3/0
+ description Trunk to DSW2
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+!
+interface Gi3/1
+ description Trunk to SW2
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+!
+interface Gi0/1
+ description Trunk to SW1
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+!
+end
+copy running-config startup-config
+
