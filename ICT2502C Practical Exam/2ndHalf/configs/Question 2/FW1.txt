@@ -1,0 +1,50 @@
+!
+en
+Student@s1t
+!
+config t
+!
+!
+hostname FW1
+!
+interface Gi0/1
+ description Link to R2
+ nameif OUTSIDE
+ security-level 0
+ ip address 192.168.40.101 255.255.255.252
+ no shutdown
+ exit
+!
+interface Gi0/3
+ description Link to PC
+ nameif INSIDE
+ security-level 100
+ ip address 192.168.50.201 255.255.255.248
+ no shutdown
+ exit
+!
+access-list OUTBOUND permit ip 192.168.50.200 255.255.255.248 any
+access-list OUTBOUND deny ip any any log
+!
+access-group OUTBOUND out interface OUTSIDE
+!
+ip verify reverse-path interface INSIDE
+!
+object network INSIDE-NET
+ subnet 192.168.50.200 255.255.255.248
+!
+object network PUBLIC-IP
+ host 192.168.50.95
+!
+policy-map global_policy
+ class inspection_default
+ inspect icmp
+!
+route OUTSIDE 0.0.0.0 0.0.0.0 192.168.40.102
+!
+nat (INSIDE,OUTSIDE) after-auto source dynamic PUBLIC-IP interface
+!
+end
+
+copy running-config startup-config
+

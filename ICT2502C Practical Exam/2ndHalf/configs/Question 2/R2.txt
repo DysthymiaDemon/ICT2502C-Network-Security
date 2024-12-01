@@ -1,0 +1,27 @@
+!
+en
+!
+config t
+!
+hostname R2
+!
+interface Gi0/0
+ ip address 192.168.50.99 255.255.255.0
+ description Link to Internet
+ no shutdown
+!
+interface Gi0/1
+ ip address 192.168.40.102 255.255.255.252
+ description Link to FW1
+ no shutdown
+!
+ip route 192.168.50.200 255.255.255.248 192.168.40.101
+ip route 0.0.0.0 0.0.0.0 192.168.50.1
+!
+interface Gi0/1
+ ip verify unicast source reachable-via rx
+!
+end
+!
+copy running-config startup-config
+

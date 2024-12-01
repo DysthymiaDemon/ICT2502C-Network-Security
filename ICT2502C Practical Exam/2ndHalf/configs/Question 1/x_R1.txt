@@ -11,13 +11,13 @@ interface Gi0/1
  no shutdown
 !
 interface Gi0/1.10
- description Mgmt Vlan to SW2
+ description Vlan 10 to SW2
  encapsulation dot1Q 10
  ip address 192.168.10.2 255.255.255.0
  no shutdown
 !
 interface Gi0/1.20
- description Mgmt Vlan to SW2
+ description Vlan 20 to SW2
  encapsulation dot1Q 20
  ip address 192.168.20.2 255.255.255.0
  no shutdown
