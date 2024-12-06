@@ -1,0 +1,54 @@
+!DSW1
+
+en
+Student@s1t
+
+config t
+hostname DSW1
+
+Vlan 10
+name vlan10
+
+Vlan 20
+name vlan20
+
+Vlan 30 
+name vlan30
+
+
+int vlan 10
+ip addr 192.168.10.1 255.255.255.0
+ip helper-address 192.168.30.29
+no shut
+
+int vlan 20
+ip addr 192.168.20.1 255.255.255.0
+ip helper-address 192.168.30.29
+no shut
+
+int vlan 30
+ip address 192.168.30.30 255.255.255.252
+no shut
+
+int gi1/0/1
+description Trunk to R1
+switchport
+switchport mode trunk
+switchport trunk allowed vlan 10,20,30
+no shut
+
+int g1/0/2
+description Trunk to SW2
+switchport mode trunk
+switchport trunk allowed vlan 10,20
+no shut
+exit
+
+ip routing
+
+
+end
+copy running-config startup-config
+
+debug ip dhcp server events
+

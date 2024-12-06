@@ -1,0 +1,54 @@
+!R1
+
+en
+Student@s1t
+
+config t
+hostname R1
+
+int gi0/0/1
+description Link to DSW1
+no ip addr
+no shut
+exit
+
+interface Gi0/0/1.10
+ description Vlan 10 to DSW1
+ encapsulation dot1Q 10
+ ip address 192.168.10.2 255.255.255.0
+ no shutdown
+
+interface Gi0/0/1.20
+ description Vlan 20 to DSW1
+ encapsulation dot1Q 20
+ ip address 192.168.20.2 255.255.255.0
+ no shutdown
+!
+
+interface Gi0/0/1.30
+ description Vlan 30 to DSW1
+ encapsulation dot1Q 30
+ ip address 192.168.30.29 255.255.255.0
+ no shutdown
+!
+
+ip dhcp pool VLAN-10
+network 192.168.10.0 255.255.255.0
+default-router 192.168.10.1
+dns-server 8.8.8.8
+exit
+
+ip dhcp pool VLAN-20
+network 192.168.20.0 255.255.255.0
+default-router 192.168.20.1
+dns-server 8.8.8.8
+exit
+
+ip dhcp excluded-address 192.168.10.1 192.168.10.10
+ip dhcp excluded-address 192.168.20.1 192.168.20.10
+
+!ip route?
+
+end
+copy running-config startup-config
+

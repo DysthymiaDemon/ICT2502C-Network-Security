@@ -1,0 +1,35 @@
+!SW1
+
+en
+Student@s1t
+
+config t
+hostname SW1
+
+int range gi1/0/2-24
+description Access Ports VLAN 10
+ip dhcp snooping trust
+ip dhcp snooping limit rate 10
+switchport
+switchport mode access
+switchport access vlan 10
+spanning-tree portfast
+no shut
+
+int gi1/0/1
+desc Trunk to SW2
+ip dhcp snooping trust
+switchport mode trunk
+switchport trunk allowed vlan 10
+no shut
+exit
+
+ip dhcp snooping 
+ip dhcp snooping vlan 10
+ip dhcp snooping verify mac-address
+no ip dhcp snooping information option
+
+
+end
+copy running-config startup-config
+

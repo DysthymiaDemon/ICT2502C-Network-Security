@@ -1,0 +1,40 @@
+!FW1
+
+en
+Student@s1t
+
+config t
+hostname FW1
+
+
+
+int e1/1
+no shut
+no switchport
+nameif OUTSIDE
+security-level 0
+ip addr 192.168.30.226 255.255.255.252
+exit
+
+int e1/2
+no shut
+no switchport
+nameif DMZ
+security-level 50
+ip addr 192.168.40.126 255.255.255.128
+exit
+
+route OUTSIDE 0.0.0.0 0.0.0.0 192.168.30.225
+
+object network DMZ-OUTSIDE
+subnet 192.168.40.0 255.255.255.128
+nat (DMZ,OUTSIDE) dynamic interface
+
+access-list OUT-DMZ permit tcp 192.168.40.0 255.255.255.128 any
+access-list OUT-DMZ permit icmp 192.168.40.0 255.255.255.128 any echo
+access-group OUT-DMZ in interface OUTSIDE
+
+end
+
+copy running-config startup-config
+

@@ -1,0 +1,68 @@
+S1-S2
+-----
+config t
+int range g1/0/2-19, g1/1/1-4
+switchport nonegotiate
+switchport port-security
+switchport port-security maximum 10
+switchport port-security mac-address sticky
+
+switchport port-security violation shutdown
+switchport port-security aging time 120
+switchport port-security aging type inactivity
+exit
+config t
+int range port-channel1-2
+switchport nonegotiate
+end
+
+config t
+int range port-channel1-2
+ip dhcp relay information trusted
+
+
+S3-S4
+------
+config t
+int range g1/0/1-28
+switchport port-security
+switchport nonegotiate
+switchport port-security maximum 10
+switchport port-security mac-address sticky
+
+switchport port-security violation shutdown
+switchport port-security aging time 120
+switchport port-security aging type inactivity
+exit
+config t
+int range port-channel1-2
+switchport nonegotiate
+end
+
+config t
+ip dhcp snooping
+ip dhcp snooping vlan 10
+ip dhcp snooping vlan 20
+ip dhcp snooping vlan 30
+
+ip arp inspection
+ip arp inspection vlan 10
+ip arp inspection vlan 20
+ip arp inspection vlan 30
+
+
+int range port-channel1-2
+ip dhcp snooping trust
+ip arp inspection trust
+
+S5
+----
+config t
+int range fa0/1-24, g0/1-2
+switchport nonegotiate
+switchport port-security
+switchport port-security max 10
+switchport port-security mac-address sticky
+switchport port-security violation shutdown
+switchport port-security aging time 120
+switchport port-security aging type inactivity

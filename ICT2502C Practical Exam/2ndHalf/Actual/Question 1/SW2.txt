@@ -1,0 +1,43 @@
+!SW2
+
+en
+Student@s1t
+
+config t
+hostname SW2
+
+int range gi1/0/3-24
+description Access Ports VLAN 20
+switchport mode access
+switchport access vlan 20
+no ip arp inspection trust
+ip arp inspection limit rate 15
+no shut
+
+int gi1/0/2
+desc Trunk to DSW1
+switchport mode trunk
+switchport trunk allowed vlan 10,20
+ip arp inspection trust
+ip dhcp snooping trust
+no shut
+
+int gi1/0/1
+desc Trunk to SW1
+switchport mode trunk
+switchport trunk allowed vlan 10
+ip arp inspection trust
+ip dhcp snooping trust
+no shut
+exit
+
+ip dhcp snooping 
+ip dhcp snooping vlan 20
+ip arp inspection vlan 20
+ip arp inspection validate dst-mac ip src-mac
+no ip dhcp snooping information option
+
+
+end
+copy running-config startup-config
+

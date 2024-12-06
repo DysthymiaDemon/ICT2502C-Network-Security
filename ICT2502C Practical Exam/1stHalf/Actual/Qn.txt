@@ -1,0 +1,31 @@
+Level 3: 
+CDO Dept
+1 x Director, 1 x Secretary
+1 x Dy Dir, 1 x Secretary
+Total: 4 pax
+Finance Dept
+1 x Finance Mngr, 1 x Dy Finance Mngr, 4 x Investment Bankers, 5 x Finance Execs
+1 x HR Mngr, 2 x HR Execs
+Total: 14 pax
+
+Level 2:
+Tech Dept
+1 x Tech Mngr, 1 x Dy Tech Mngr, 4 x Principal Engrs, 8 x Engrs
+1 x Finance Execs
+1 x HR Execs
+Total: 16 pax
+Pantry
+14 x Ethernet ports
+Total: 14 pax
+
+Level 1:
+Sales Dept
+1 x Sales Mngr, 1 x Dy Sales Mngr, 5 x Sales Execs
+1 x Finance Execs
+1 x HR Execs
+Total: 9 pax
+Meeting room
+12 x Ethernet ports
+Total: 12 pax
+
+10.1.2.0 /24

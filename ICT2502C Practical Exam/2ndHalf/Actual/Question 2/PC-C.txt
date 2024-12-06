@@ -1,0 +1,10 @@
+!PC-C
+
+eth
+connects to FW1 E1/2
+ip address 192.168.40.1 / 25
+default-gateway 192.168.40.126
+
+preferred dns: 8.8.8.8
+alternate dns: 1.1.1.1
+

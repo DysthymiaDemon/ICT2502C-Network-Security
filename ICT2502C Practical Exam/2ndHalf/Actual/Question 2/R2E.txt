@@ -1,0 +1,32 @@
+!R2
+
+en
+Student@s1t
+
+config t
+hostname R2
+
+int Gi0/0/0
+description Link to Internet
+no shut
+ip addr 203.149.211.17 255.255.255.248
+ip nat outside
+
+int Gi0/0/1
+description Link to FW1
+no shut
+ip addr 172.17.9.137 255.255.255.252
+ip nat inside
+
+ip route 0.0.0.0 0.0.0.0 203.149.211.18
+ip route 192.168.40.0 255.255.255.128 192.168.30.226
+
+ip nat pool NAT-POOL 203.149.211.17 203.149.211.22 netmask 255.255.255.248
+
+access-list 1 permit 192.168.40.0 0.0.0.7
+ip nat inside source list 1 pool NAT-POOL
+
+end
+
+copy running-config startup-config
+
